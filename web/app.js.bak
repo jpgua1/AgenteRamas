@@ -1,0 +1,320 @@
+const form = document.getElementById('analyze-form');
+const statu    const data = await res.json();
+    currentJobId = data.job_id;
+    platformInfo.textContent = 'Plataforma detectada: ' + (data.platform || 'desconocida');
+    console.log('[UI] Job iniciado', currentJobId, data);
+    analysisStartTime = Date.now();
+    setStatus('🚀 Job iniciado - procesando...');
+    // Persistir en hash para recuperar tras reload
+    location.hash = '#job=' + currentJobId;
+    startPolling();cument.getElementById('status');
+const platformInfo = document.getElementById('platformInfo');
+const loadLatestBtn = document.getElementById('loadLatestBtn');
+const dashboardEl = document.getElementById('dashboard');
+const summaryEl = document.getElementById('summary');
+const projectsTableBody = document.querySelector('#projects-table tbody');
+const branchesDetail = document.getElementById('branches-detail');
+const branchesTableBody = document.querySelector('#branches-table tbody');
+const backBtn = document.getElementById('backBtn');
+const reloadBtn = document.getElementById('reloadBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const dashboardPlatform = document.getElementById('dashboardPlatform');
+
+let currentJobId = null;
+const API_BASE = location.origin; // asegura absoluta
+let analyzing = false;
+let pollingInterval = null;
+let analysisStartTime = null;
+
+function setStatus(msg, type = 'info') {
+  statusEl.textContent = msg;
+  statusEl.className = 'status ' + type;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  stopPolling();
+  branchesDetail.classList.add('hidden');
+  dashboardEl.classList.add('hidden');
+  projectsTableBody.innerHTML = '';
+  summaryEl.innerHTML = '';
+
+  if(analyzing){
+    console.warn('[UI] Ya hay un análisis en curso, ignorando submit');
+    return;
+  }
+
+  const repository_url = document.getElementById('repository_url').value.trim();
+  const token = document.getElementById('token').value.trim();
+  const project_path = document.getElementById('project_path').value.trim() || null;
+  const auto_discover_groups = document.getElementById('auto_discover_groups').value === 'true';
+  const analysis_mode = document.getElementById('analysis_mode').value;
+  const active_days = parseInt(document.getElementById('active_days').value, 10) || 30;
+  const stale_days = parseInt(document.getElementById('stale_days').value, 10) || 90;
+
+  if(!repository_url || !token){
+    setStatus('Repository URL y Token son requeridos', 'error');
+    return;
+  }
+
+  setStatus('Lanzando análisis...');
+  try {
+    console.log('[UI] Lanzando análisis con', {repository_url, project_path, auto_discover_groups, analysis_mode, active_days, stale_days});
+  analyzing = true;
+  document.getElementById('startBtn').disabled = true;
+  const res = await fetch(API_BASE + '/api/v1/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repository_url, token, project_path, auto_discover_groups, analysis_mode, active_days, stale_days })
+    });
+    if(!res.ok){
+      const err = await res.json().catch(()=>({detail:res.statusText}));
+      throw new Error(err.detail || 'Error al iniciar');
+    }
+  const data = await res.json();
+  currentJobId = data.job_id;
+  platformInfo.textContent = 'Plataforma detectada: ' + (data.platform || 'desconocida');
+    console.log('[UI] Job iniciado', currentJobId, data);
+    setStatus('Job iniciado ' + currentJobId + ' - procesando...');
+  // Persistir en hash para recuperar tras reload
+  location.hash = '#job=' + currentJobId;
+  startPolling();
+  } catch (err) {
+    setStatus('Error: ' + err.message, 'error');
+    console.error('[UI] Error iniciar análisis', err);
+  }
+  finally {
+    analyzing = false;
+    document.getElementById('startBtn').disabled = false;
+  }
+});
+
+function startPolling(){
+  stopPolling();
+  pollingInterval = setInterval(fetchStatus, 2000);
+  fetchStatus();
+}
+function stopPolling(){
+  if(pollingInterval){
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+}
+
+async function fetchStatus(){
+  if(!currentJobId) return;
+  try {
+  console.log('[UI] Polling status job', currentJobId);
+    const url = API_BASE + '/api/v1/jobs/' + currentJobId + '?t=' + Date.now();
+    console.log('[UI] GET', url);
+    const res = await fetch(url);
+    if(!res.ok){
+      const txt = await res.text();
+      console.error('[UI] Respuesta error', res.status, txt);
+      throw new Error('No se pudo obtener el estado (HTTP ' + res.status + ')');
+    }
+    const job = await res.json();
+  console.log('[UI] Job status recibido', job);
+    renderJob(job);
+    if(job.status === 'completed' || job.status === 'failed'){
+      stopPolling();
+    }
+  } catch (e){
+    setStatus('Error status: ' + e.message, 'error');
+  console.error('[UI] Error obteniendo status', e);
+    // Intento debug: listar todos los jobs
+    try {
+      const listRes = await fetch(API_BASE + '/api/v1/jobs');
+      const listData = await listRes.json();
+      console.log('[UI] Jobs en memoria', listData);
+    } catch(listErr){
+      console.warn('[UI] No se pudo listar jobs', listErr);
+    }
+  }
+}
+
+function renderJob(job){
+  const { status, progress, message, analysis_data } = job;
+  setStatus(`${status} ${(progress*100).toFixed(0)}% - ${message}`);
+  if(analysis_data && status === 'completed'){
+    renderDashboard(analysis_data);
+  }
+  if(job.platform){
+    platformInfo.textContent = 'Plataforma detectada: ' + job.platform;
+  }
+}
+
+function renderDashboard(data){
+  dashboardEl.classList.remove('hidden');
+  const a = data.analysis || {};
+  summaryEl.innerHTML = `
+    <h2>Resumen</h2>
+    <div class="summary-grid">
+      ${metric('Proyectos', a.total_projects)}
+      ${metric('Ramas', a.total_branches)}
+      ${metric('Ramas Inactivas', a.total_inactive_branches)}
+      ${metric('Tags', a.total_tags)}
+      ${metric('Releases', a.total_releases)}
+      ${metric('Tags Obsoletos', a.total_obsolete_tags)}
+      ${metric('Artefactos por Expirar', a.artifacts_expiring_soon)}
+      ${metric('Artefactos Expirados', a.artifacts_expired)}
+    </div>
+  `;
+
+  // proyectos
+  projectsTableBody.innerHTML = '';
+  (data.projects || []).forEach(proj => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(proj.name)}</td>
+      <td>${proj.branches.length}</td>
+      <td>${proj.inactive_count || 0}</td>
+      <td><button data-proj="${escapeAttr(proj.name)}">Ver ramas</button></td>
+    `;
+    projectsTableBody.appendChild(tr);
+  });
+}
+backBtn.addEventListener('click', ()=>{
+  // limpiar y volver al formulario principal con recarga limpia
+  location.hash='';
+  location.reload();
+});
+
+reloadBtn.addEventListener('click', ()=>{
+  if(!currentJobId){
+    setStatus('No hay job cargado','error');
+    return;
+  }
+  setStatus('Recargando dashboard…');
+  fetchStatusCompleted(currentJobId).then(a=>{
+    if(a.analysis_data){
+      renderDashboard(a.analysis_data);
+      setStatus('Dashboard recargado');
+    } else {
+      setStatus('Sin datos para recargar','error');
+    }
+  }).catch(err=>setStatus('Error recarga: '+err.message,'error'));
+});
+
+downloadBtn.addEventListener('click', ()=>{
+  if(!currentJobId){
+    setStatus('No hay job para descargar','error');
+    return;
+  }
+  const url = API_BASE + '/api/v1/download/' + currentJobId;
+  setStatus('Descargando…');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'analysis_'+currentJobId+'.zip';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+});
+
+projectsTableBody.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-proj]');
+  if(!btn) return;
+  const projName = btn.getAttribute('data-proj');
+  showBranches(projName);
+});
+
+function showBranches(projectName){
+  fetch(API_BASE + '/api/v1/jobs/' + currentJobId)
+    .then(r=>r.json())
+    .then(job => {
+      const projects = (job.analysis_data && job.analysis_data.projects) || [];
+      const proj = projects.find(p => p.name === projectName);
+      if(!proj){
+        alert('Proyecto no encontrado');
+        return;
+      }
+      branchesDetail.classList.remove('hidden');
+      branchesDetail.scrollIntoView({behavior:'smooth'});
+      renderBranches(projectName, proj.branches || []);
+    })
+    .catch(err => alert('Error ramas: ' + err.message));
+}
+
+function renderBranches(projectName, branches){
+  branchesTableBody.innerHTML = '';
+  branchesDetail.querySelector('h2').textContent = 'Ramas - ' + projectName;
+  branches.forEach(b => {
+    const tr = document.createElement('tr');
+    const estadoClass = b.status === 'INACTIVA' ? 'badge inactiva' : 'badge activa';
+    tr.innerHTML = `
+      <td>${escapeHtml(b.name)}</td>
+      <td>${escapeHtml(b.last_commit_date || '-')}</td>
+      <td>${b.days_since_last_commit ?? '-'}</td>
+      <td><span class="${estadoClass}">${escapeHtml(b.status || 'DESCONOCIDO')}</span></td>
+    `;
+    branchesTableBody.appendChild(tr);
+  });
+}
+
+function metric(label, value){
+  return `<div class="metric"><h3>${escapeHtml(label)}</h3><p>${value ?? 0}</p></div>`;
+}
+
+function escapeHtml(s){
+  return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+}
+function escapeAttr(s){
+  return escapeHtml(s).replace(/"/g,'&quot;');
+}
+
+// Opcional: permitir cargar un job existente via hash #job=<id>
+window.addEventListener('load', () => {
+  const hash = location.hash;
+  if(hash.startsWith('#job=')){
+    currentJobId = hash.slice(5);
+    setStatus('Cargando job existente ' + currentJobId);
+    startPolling();
+  }
+});
+
+loadLatestBtn.addEventListener('click', async ()=>{
+  try {
+    setStatus('Buscando últimos análisis...');
+    const r = await fetch(API_BASE + '/api/v1/outputs');
+    const j = await r.json();
+    if(!j.outputs.length){
+      setStatus('No hay análisis previos');
+      return;
+    }
+    currentJobId = j.outputs[0].job_id;
+    location.hash = '#job=' + currentJobId;
+    setStatus('Cargando job ' + currentJobId);
+    startPolling();
+  } catch(e){
+    setStatus('Error cargar últimos: ' + e.message,'error');
+  }
+});
+
+// Ajustar polling para cargar analysis endpoint al completar
+function fetchStatusCompleted(jobId){
+  return fetch(API_BASE + '/api/v1/jobs/' + jobId + '/analysis').then(r=>r.json());
+}
+
+// Override renderJob post-stop polling
+function renderJob(job){
+  const { status, progress, message } = job;
+  setStatus(`${status} ${(progress*100||0).toFixed(0)}% - ${message}`);
+  if(job.platform){
+    platformInfo.textContent = 'Plataforma detectada: ' + job.platform;
+    dashboardPlatform.textContent = 'Plataforma: '+job.platform;
+  }
+  if(status === 'completed'){
+    fetchStatusCompleted(job.job_id).then(a => {
+      if(a.analysis_data){
+        // Redirigir a dashboard.html con job_id en hash
+        setStatus('✅ Análisis completado. Redirigiendo…');
+        setTimeout(()=>{
+          location.href = '/app/dashboard.html#job=' + job.job_id;
+        }, 500);
+      }
+    }).catch(err=>console.error('Error analysis endpoint', err));
+  } else if(job.analysis_data && status !== 'failed') {
+    // mostrar progreso parcial si ya existe algo
+    renderDashboard(job.analysis_data);
+  }
+}

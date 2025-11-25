@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Análisis - Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Repositorio Analyzer - Dashboard</h1>
+  </header>
+
+  <main id="app">
+    <section id="loading" class="card" style="text-align:center;padding:2rem">
+      <p style="font-size:1rem;margin:1rem 0">Cargando análisis…</p>
+      <div style="width:100%;height:4px;background:#2a3d54;border-radius:20px;overflow:hidden">
+        <div id="progressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#6366f1,#818cf8);animation:progress 1.5s ease-in-out infinite"></div>
+      </div>
+      <div id="status" class="status"></div>
+    </section>
+
+    <section id="dashboard" class="hidden">
+      <div class="card" id="dashboard-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button type="button" id="backBtn" style="background:#334155">← Volver</button>
+          <button type="button" id="reloadBtn" style="background:#334155">↻ Recargar</button>
+          <button type="button" id="downloadBtn" style="background:#6366f1">⬇ Descargar ZIP</button>
+        </div>
+        <div id="dashboardPlatform" style="font-size:.7rem;color:#94a3b8"></div>
+      </div>
+      <div class="card" id="summary"></div>
+      
+      <!-- 🤖 INSIGHTS CON LLM - ACORDEÓN -->
+      <div class="card" style="cursor:pointer" id="insights-accordion" onclick="toggleInsights()">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 style="margin:0">🤖 Insights Inteligentes</h2>
+          <span id="insights-toggle" style="font-size:1.5rem;transition:transform 0.3s">▼</span>
+        </div>
+      </div>
+      <div class="card" id="insights-section" class="hidden">
+        <button type="button" id="loadInsightsBtn" style="background:#8b5cf6;margin-bottom:1rem;width:100%">📊 Cargar Insights</button>
+        <div id="insights-content"></div>
+      </div>
+      
+      <!-- 📋 RECOMENDACIONES - ACORDEÓN -->
+      <div class="card" style="cursor:pointer" id="recommendations-accordion" onclick="toggleRecommendations()">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 style="margin:0">📋 Plan de Limpieza Inteligente</h2>
+          <span id="recommendations-toggle" style="font-size:1.5rem;transition:transform 0.3s">▼</span>
+        </div>
+      </div>
+      <div class="card" id="recommendations-section" class="hidden">
+        <button type="button" id="loadRecommendationsBtn" style="background:#ec4899;margin-bottom:1rem;width:100%">📋 Cargar Recomendaciones</button>
+        <div id="recommendations-content"></div>
+      </div>
+      
+      <div class="card">
+        <h2>Proyectos</h2>
+        <table id="projects-table">
+          <thead>
+            <tr>
+              <th>Proyecto</th>
+              <th>Ramas totales</th>
+              <th>Ramas inactivas</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card" id="branches-detail" class="hidden">
+        <h2>Ramas</h2>
+        <table id="branches-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Último Commit</th>
+              <th>Días sin commit</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <small>Analyzer &copy; 2025</small>
+  </footer>
+
+  <style>
+    @keyframes progress {
+      0% { width: 0%; }
+      50% { width: 70%; }
+      100% { width: 100%; }
+    }
+  </style>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

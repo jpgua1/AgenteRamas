@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Analyzer Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Repositorio Analyzer</h1>
+  </header>
+
+  <main id="app">
+  <section id="form-section" class="card">
+      <h2>Iniciar Análisis</h2>
+      <form id="analyze-form">
+        <label>Repository URL
+          <input type="text" id="repository_url" placeholder="https://gitlab.com/grupo" required />
+        </label>
+        <label>Token
+          <input type="password" id="token" placeholder="TOKEN" required />
+        </label>
+        <details>
+          <summary>Opciones avanzadas</summary>
+          <label>Project Path (opcional)
+            <input type="text" id="project_path" placeholder="grupo/proyecto" />
+          </label>
+          <label>Auto discover groups
+            <select id="auto_discover_groups">
+              <option value="true" selected>Sí</option>
+              <option value="false">No</option>
+            </select>
+          </label>
+          <label>Analysis Mode
+            <select id="analysis_mode">
+              <option value="basic" selected>Básico</option>
+              <option value="intelligent">Inteligente</option>
+            </select>
+          </label>
+          <label>Días rama activa
+            <input type="number" id="active_days" value="30" min="1" />
+          </label>
+          <label>Días rama obsoleta
+            <input type="number" id="stale_days" value="90" min="1" />
+          </label>
+        </details>
+        <button type="submit" id="startBtn">Analizar</button>
+        <button type="button" id="loadLatestBtn" style="margin-top:.5rem;background:#475569">Cargar último</button>
+      </form>
+      <div id="status" class="status"></div>
+      <div id="platformInfo" style="font-size:.7rem;color:#94a3b8"></div>
+    </section>
+
+    <section id="dashboard" class="hidden">
+      <div class="card" id="dashboard-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button type="button" id="backBtn" style="background:#334155">Volver</button>
+          <button type="button" id="reloadBtn" style="background:#334155">Recargar</button>
+          <button type="button" id="downloadBtn" style="background:#6366f1">Descargar ZIP</button>
+        </div>
+        <div id="dashboardPlatform" style="font-size:.7rem;color:#94a3b8"></div>
+      </div>
+      <div class="card" id="summary"></div>
+      
+      <!-- 🤖 INSIGHTS CON LLM -->
+      <div class="card" id="insights-section" class="hidden">
+        <h2>🤖 Insights Inteligentes</h2>
+        <button type="button" id="loadInsightsBtn" style="background:#8b5cf6;margin-bottom:1rem">📊 Cargar Insights</button>
+        <div id="insights-content"></div>
+      </div>
+      
+      <!-- 📋 RECOMENDACIONES -->
+      <div class="card" id="recommendations-section" class="hidden">
+        <h2>📋 Plan de Limpieza</h2>
+        <button type="button" id="loadRecommendationsBtn" style="background:#ec4899;margin-bottom:1rem">📋 Cargar Recomendaciones</button>
+        <div id="recommendations-content"></div>
+      </div>
+      
+      <div class="card">
+        <h2>Proyectos</h2>
+        <table id="projects-table">
+          <thead>
+            <tr>
+              <th>Proyecto</th>
+              <th>Ramas totales</th>
+              <th>Ramas inactivas</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card" id="branches-detail" class="hidden">
+        <h2>Ramas</h2>
+        <table id="branches-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Último Commit</th>
+              <th>Días sin commit</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <small>Analyzer &copy; 2025</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
